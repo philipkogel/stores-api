@@ -17,15 +17,18 @@ class Store(MethodView):
         return store
 
     def delete(self, store_id: str):
-        store = StoreModel.query.get_or_404(store_id)
-        raise NotImplementedError("Updating not implemented.")
+        store = StoreModel.query.get(store_id)
+        if store is not None:
+            db.session.delete(store)
+            db.session.commit()
+        return {"message": "Store deleted."}, 204
 
 
 @blp.route("/stores")
 class Stores(MethodView):
     @blp.response(200, StoreSchema(many=True))
     def get(self):
-        return stores.values()
+        return StoreModel.query.all()
 
     @blp.arguments(StoreSchema)
     @blp.response(201, StoreSchema)
@@ -36,10 +39,7 @@ class Stores(MethodView):
             db.session.add(store)
             db.session.commit()
         except IntegrityError:
-            abort(
-                400,
-                message="A store with this name already exists."
-            )
+            abort(400, message="A store with this name already exists.")
         except SQLAlchemyError:
             abort(500, message="An error occured while inserting the store.")
 
