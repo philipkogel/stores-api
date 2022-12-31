@@ -2,30 +2,51 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError
 
-from models import TagModel, StoreModel
+from models import (
+    TagModel,
+    StoreModel,
+    ItemModel,
+)
 from db import db
 from schemas import (
     TagSchema,
+    TagAndItemSchema,
 )
 
 blp = Blueprint("tags", __name__, description="Operations on tags.")
 
 
-@blp.route("/tag/<string:tag_id>")
-class Item(MethodView):
+@blp.route("/tags/<string:tag_id>")
+class Tag(MethodView):
     @blp.response(200, TagSchema)
     def get(self, tag_id: str):
         return TagModel.query.get_or_404(tag_id)
 
+    @blp.response(
+        204,
+        description="Deletes a tag if no item is tagged.",
+        example={"message": "Tag deleted."},
+    )
+    @blp.alt_response(404, description="Tag not found.")
+    @blp.alt_response(
+        400,
+        description="Returned if Tag is assigned to one or more items. \
+         Tag is not deleted.",
+    )
     def delete(self, tag_id: str):
-        tag = TagModel.query.get(tag_id)
-        if tag is not None:
+        tag = TagModel.query.get_or_404(tag_id)
+        if not tag.items:
             db.session.delete(tag)
             db.session.commit()
-        return {"message": "Tag deleted."}, 204
+            return {"message": "Tag deleted."}, 204
+
+        abort(
+            400,
+            message="Could not delete tag. One or more items are assigned.",
+        )
 
 
-@blp.route("/store/<string:store_id>/tag")
+@blp.route("/stores/<string:store_id>/tags")
 class Tags(MethodView):
     @blp.response(200, TagSchema(many=True))
     def get(self, store_id: str):
@@ -45,3 +66,40 @@ class Tags(MethodView):
             abort(500, message=str(e))
 
         return tag
+
+
+@blp.route("/items/<string:item_id>/tags/<string:tag_id>")
+class LinkTagsToItem(MethodView):
+    @blp.response(201, TagSchema)
+    def post(self, item_id: str, tag_id: str):
+        item = ItemModel.query.get_or_404(item_id)
+        tag = TagModel.query.get_or_404(tag_id)
+
+        if item.store_id != tag.store_id:
+            abort(
+                400,
+                message="Item and tag are not assosiated with the same store.",
+            )
+
+        item.tags.append(tag)
+        try:
+            db.session.add(item)
+            db.session.commit()
+        except SQLAlchemyError as e:
+            abort(500, message=str(e))
+
+        return tag
+
+    @blp.response(200, TagAndItemSchema)
+    def delete(self, item_id: str, tag_id: str):
+        item = ItemModel.query.get_or_404(item_id)
+        tag = TagModel.query.get_or_404(tag_id)
+
+        item.tags.remove(tag)
+        try:
+            db.session.add(item)
+            db.session.commit()
+        except SQLAlchemyError as e:
+            abort(500, message=str(e))
+
+        return {"message": "Item removed from tag.", "item": item, "tag": tag}
