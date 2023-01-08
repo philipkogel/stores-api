@@ -12,3 +12,23 @@ services:
       - ./app:/app
     command: >
       sh -c "python3 -m flask --debug run --host=0.0.0.0 --port=8000"
+    depends_on:
+      - db
+      - redis
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=storesdb
+      - POSTGRES_USER=devuser
+      - POSTGRES_PASSWORD=changeme
+    ports:
+      - "5432:5432"
+  redis:
+     image: redislabs/redismod
+     ports:
+       - '6379:6379'
+
+volumes:
+  dev-db-data:

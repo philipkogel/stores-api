@@ -7,7 +7,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt
 from models import UserModel
 from db import db
 from schemas import UserSchema
-from blocklist import BLOCKLIST
+from blocklist import jwt_redis_blocklist
 
 
 blp = Blueprint("user", __name__, description="Operations on user.")
@@ -53,8 +53,9 @@ class UserLogout(MethodView):
     @jwt_required()
     def post(self):
         jti = get_jwt()["jti"]
-        BLOCKLIST.add(jti)
-
+        jwt_redis_blocklist.set(jti, "")
+        token_in_redis = jwt_redis_blocklist.get(jti)
+        print(token_in_redis)
         return {"message": "Logout successful."}, 200
 
 
