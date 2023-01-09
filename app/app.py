@@ -62,6 +62,18 @@ def create_app(db_url=None):
             401
         )
 
+    @jwt.needs_fresh_token_loader
+    def token_not_fresh_callback(jwt_header, jwt_payload):
+        return (
+            jsonify(
+                {
+                    "description": "The token is not fresh.",
+                    "error": "fresh_token_required"
+                }
+            ),
+            401
+        )
+
     @jwt.expired_token_loader
     def exipred_token_callback(jwt_header, jwt_payload):
         return (
