@@ -7,11 +7,13 @@ services:
       args:
         - DEV=true
     ports:
-      - "8000:8000"
+      - 8000:8000
     volumes:
       - ./app:/app
     command: >
-      sh -c "python3 -m flask --debug run --host=0.0.0.0 --port=8000"
+      sh -c "flask db migrate &&
+      flask db upgrade &&
+      flask --debug run --host=0.0.0.0 --port=8000"
     depends_on:
       - db
       - redis
@@ -24,11 +26,11 @@ services:
       - POSTGRES_USER=devuser
       - POSTGRES_PASSWORD=changeme
     ports:
-      - "5432:5432"
+      - 5432:5432
   redis:
      image: redislabs/redismod
      ports:
-       - '6379:6379'
+       - 6379:6379
 
 volumes:
   dev-db-data:
