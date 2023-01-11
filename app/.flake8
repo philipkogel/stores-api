@@ -1,4 +1,5 @@
 [flake8]
 exclude =
     __pycache__,
+    migrations
 per-file-ignores = __init__.py:F401
