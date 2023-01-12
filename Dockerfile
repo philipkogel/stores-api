@@ -6,6 +6,7 @@ ENV PYTHONUNBUFFERED 1
 COPY ./app /app
 COPY ./requirements.txt /app/requirements.txt
 COPY ./requirements-dev.txt /app/requirements-dev.txt
+COPY ./docker-entrypoint.sh /app
 
 WORKDIR /app
 
@@ -25,4 +26,4 @@ FROM base AS deploy
 
 COPY --from=base /app /app
 EXPOSE 80
-CMD [ "gunicorn", "--bind", "0.0.0.0:80", "app:create_app()" ]
+CMD [ "/bin/bash", "docker-entrypoint.sh"]
