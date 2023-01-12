@@ -1,3 +1,5 @@
+import requests
+import os
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,20 +14,35 @@ from flask_jwt_extended import (
 
 from models import UserModel
 from db import db
-from schemas import UserSchema
+from schemas import UserSchema, UserRegisterSchema
 from blocklist import jwt_redis_blocklist
 
 
 blp = Blueprint("user", __name__, description="Operations on user.")
 
 
+def send_simple_message(to: str, subject: str, body: str):
+    domain = os.getenv("MAILGUN_DOMAIN", "")
+    return requests.post(
+        f"https://api.mailgun.net/v3/{domain}/messages",
+        auth=("api", os.getenv("MAILGUN_API_KEY")),
+        data={
+                "from": f"Excited User <mailgun@{domain}>",
+                "to": [to],
+                "subject": subject,
+                "text": body
+            }
+        )
+
+
 @blp.route("/user")
 class UserRegister(MethodView):
-    @blp.arguments(UserSchema)
-    @blp.response(201, UserSchema)
-    def post(self, user_data: UserSchema):
+    @blp.arguments(UserRegisterSchema)
+    @blp.response(201, UserRegisterSchema)
+    def post(self, user_data: UserRegisterSchema):
         user = UserModel(
             username=user_data["username"],
+            email=user_data["email"],
             password=pbkdf2_sha256.hash(user_data["password"]),
         )
 
@@ -35,6 +52,11 @@ class UserRegister(MethodView):
         except SQLAlchemyError:
             abort(500, message="An error occured while creating a user.")
 
+        send_simple_message(
+            to=user.email,
+            subject="Successfully signed up",
+            body=f"Hi, {user.username}! You have successfully signed up to the Stores API Project."
+        )
         return user
 
 
