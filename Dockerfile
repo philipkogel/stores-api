@@ -1,4 +1,4 @@
-FROM python:3.11.1-alpine3.17
+FROM python:3.11.1-alpine3.17 as BASE
 LABEL maintainer="philipkogel"
 
 ENV PYTHONUNBUFFERED 1
@@ -13,9 +13,16 @@ EXPOSE 8000
 ARG DEV=false
 
 RUN python3 -m venv /py && \
-    /py/bin/pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    pip freeze > requirements.txt && \
-    if [ $DEV = "true" ]; \
-      then pip install -r /app/requirements-dev.txt ; \
-    fi
+  /py/bin/pip install --upgrade pip && \
+  pip install -r requirements.txt && \
+  pip freeze > requirements.txt && \
+  if [ $DEV = "true" ]; \
+  then pip install -r /app/requirements-dev.txt ; \
+  fi
+
+
+FROM base AS deploy
+
+COPY --from=base /app /app
+EXPOSE 80
+CMD [ "gunicorn", "--bind", "0.0.0.0:80", "app:create_app()" ]

@@ -4,6 +4,7 @@ services:
   app:
     build:
       context: .
+      target: base
       args:
         - DEV=true
     ports:
