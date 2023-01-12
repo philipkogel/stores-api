@@ -32,6 +32,17 @@ services:
      image: redislabs/redismod
      ports:
        - 6379:6379
+  worker:
+      build:
+        context: .
+        target: base
+        args:
+          - DEV=true
+      depends_on:
+          - redis
+      command: rq worker --url redis://redis:6379 emails
+      links:
+          - redis
 
 volumes:
   dev-db-data:

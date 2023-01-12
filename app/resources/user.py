@@ -1,3 +1,4 @@
+from flask import current_app
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,8 +13,9 @@ from flask_jwt_extended import (
 
 from models import UserModel
 from db import db
-from schemas import UserSchema
+from schemas import UserSchema, UserRegisterSchema
 from blocklist import jwt_redis_blocklist
+from tasks import send_user_registration_email
 
 
 blp = Blueprint("user", __name__, description="Operations on user.")
@@ -21,11 +23,12 @@ blp = Blueprint("user", __name__, description="Operations on user.")
 
 @blp.route("/user")
 class UserRegister(MethodView):
-    @blp.arguments(UserSchema)
-    @blp.response(201, UserSchema)
-    def post(self, user_data: UserSchema):
+    @blp.arguments(UserRegisterSchema)
+    @blp.response(201, UserRegisterSchema)
+    def post(self, user_data: UserRegisterSchema):
         user = UserModel(
             username=user_data["username"],
+            email=user_data["email"],
             password=pbkdf2_sha256.hash(user_data["password"]),
         )
 
@@ -34,6 +37,12 @@ class UserRegister(MethodView):
             db.session.commit()
         except SQLAlchemyError:
             abort(500, message="An error occured while creating a user.")
+
+        current_app.queue.enqueue(
+            send_user_registration_email,
+            user.email,
+            user.username
+        )
 
         return user
 
