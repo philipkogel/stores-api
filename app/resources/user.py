@@ -55,7 +55,8 @@ class UserRegister(MethodView):
         send_simple_message(
             to=user.email,
             subject="Successfully signed up",
-            body=f"Hi, {user.username}! You have successfully signed up to the Stores API Project."
+            body=f"Hi, {user.username}! \
+                You have successfully signed up to the Stores API Project."
         )
         return user
 
